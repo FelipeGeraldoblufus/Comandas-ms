@@ -8,8 +8,8 @@ import (
 
 	//"github.com/ValeHenriquez/example-rabbit-go/tasks-server/controllers"
 	//"github.com/ValeHenriquez/example-rabbit-go/tasks-server/models"
-	"github.com/FelipeGeraldoblufus/Cart/controllers"
-	"github.com/FelipeGeraldoblufus/Cart/models"
+	"github.com/FelipeGeraldoblufus/Comandas-ms/controllers"
+	"github.com/FelipeGeraldoblufus/Comandas-ms/models"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -40,62 +40,83 @@ func Handler(d amqp.Delivery, ch *amqp.Channel) {
 	failOnError(err, "Failed to marshal data")
 	switch actionType {
 	case "GET_PRODUCT":
-		log.Println(" [.] Getting products")
-		/*products, err := controllers.GET()
-		log.Println(products)
-		failOnError(err, "Failed to get products")
-		productsJSON, err := json.Marshal(products)
-		failOnError(err, "Failed to marshal products")
-
-		response = models.Response{
-			Success: "succes",
-			Message: "Products retrieved",
-			Data:    productsJSON,
-		}*/
-
-	case "GET_USERBYNAME":
-		log.Println(" [.] Getting product by Name")
-		var data struct {
-			Name string `json:"username"`
-		}
+		log.Println(" [.] Getting product by ID")
+	
 		var err error
-		var userJson []byte
-		var users models.User
-
-		err = json.Unmarshal(Payload.Data, &data)
-		users, err = controllers.GetByUser(data.Name)
-
-		userJson, err = json.Marshal(users)
+		var productJson []byte
+		var product models.Product
+	
+		// Aquí, Payload.Data debería ser solo un número (ID)
+		log.Printf("Received Payload: %s", Payload.Data)
+	
+		// Convertir el Payload.Data a uint (ID del producto)
+		var productID string
+		if err := json.Unmarshal(Payload.Data, &productID); err != nil {
+			log.Printf("Error unmarshalling data: %v", err)
+			response = models.Response{
+				Success: "error",
+				Message: "Error parsing request data",
+				Data:    []byte(err.Error()),
+			}
+			break
+		}
+	
+		log.Printf("Searching for product with ID: %d", productID)
+	
+		// Llamar a la función para obtener el producto por ID
+		product, err = controllers.GetByProductID(productID)
 		if err != nil {
+			// Si no se encuentra el producto o ocurre otro error
+			log.Printf("Error getting product by ID: %v", err)
 			response = models.Response{
 				Success: "error",
 				Message: "Error getting product",
 				Data:    []byte(err.Error()),
 			}
 		} else {
-			response = models.Response{
-				Success: "succes",
-				Message: "Product retrieved",
-				Data:    userJson,
+			// Si todo está bien, devolver el producto en formato JSON
+			productJson, err = json.Marshal(product) // Serializar el producto a JSON
+			if err != nil {
+				log.Printf("Error serializing product: %v", err)
+				response = models.Response{
+					Success: "error",
+					Message: "Error serializing product",
+					Data:    []byte(err.Error()),
+				}
+			} else {
+				// Enviar la respuesta con el producto serializado como JSON
+				response = models.Response{
+					Success: "success",
+					Message: "Product retrieved",
+					Data:    productJson, // Enviar los datos como JSON
+				}
 			}
 		}
 
 	case "EDIT_PRODUCT":
 		log.Println(" [.] Editing product by Name")
+	
+		// Cambiar la estructura para reflejar el JSON con 'updateDTO'
 		var data struct {
-			Product        string `json:"product"`
-			NewNameProduct string `json:"newnameProduct"`
+			UpdateDTO struct {
+				Product        string `json:"product"`
+				NewNameProduct string `json:"newnameProduct"`
+				NewPrice       int    `json:"newPrice"`
+				NewDescription string `json:"newDescription"`
+			} `json:"updateOrderDTO"`
 		}
+	
 		var err error
 		var userJson []byte
 		var producto models.Product
-
-		// Log de depuración para verificar los datos recibidos
-		log.Printf("Received data: %+v\n", data)
-
+	
+		// Log para verificar los datos antes de deserializar
+		log.Printf("Received data before unmarshalling: %s", string(Payload.Data))
+	
 		// Decodificar los datos recibidos
 		err = json.Unmarshal(Payload.Data, &data)
 		if err != nil {
+			log.Printf("Error unmarshalling JSON: %v", err)
 			response = models.Response{
 				Success: "error",
 				Message: "Error decoding JSON",
@@ -103,10 +124,31 @@ func Handler(d amqp.Delivery, ch *amqp.Channel) {
 			}
 			break
 		}
-
+	
+		// Log para verificar los datos después del unmarshalling
+		log.Printf("Decoded data: %+v", data)
+	
+		// Verificar que el campo 'Product' no esté vacío
+		if data.UpdateDTO.Product == "" {
+			log.Println("Error: product name is empty")
+			response = models.Response{
+				Success: "error",
+				Message: "Product name cannot be empty",
+				Data:    []byte("Product name cannot be empty"),
+			}
+			break
+		}
+	
 		// Llamada a la función para actualizar el producto
-		producto, err = controllers.UpdateProduct(data.Product, data.NewNameProduct)
+		producto, err = controllers.UpdateProduct(
+			data.UpdateDTO.Product, 
+			data.UpdateDTO.NewNameProduct, 
+			data.UpdateDTO.NewPrice,  
+			data.UpdateDTO.NewDescription, 
+
+		)
 		if err != nil {
+			log.Printf("Error updating product: %v", err)
 			response = models.Response{
 				Success: "error",
 				Message: "Error updating product",
@@ -114,34 +156,44 @@ func Handler(d amqp.Delivery, ch *amqp.Channel) {
 			}
 			break
 		}
-
+	
 		// Convertir el resultado a JSON y preparar la respuesta
 		userJson, err = json.Marshal(producto)
 		if err != nil {
+			log.Printf("Error marshaling JSON: %v", err)
 			response = models.Response{
 				Success: "error",
 				Message: "Error marshaling JSON",
 				Data:    []byte(err.Error()),
 			}
 		} else {
+			log.Printf("Product updated successfully: %+v", producto)
 			response = models.Response{
 				Success: "success",
 				Message: "Product updated",
 				Data:    userJson,
 			}
 		}
-
+	
+	
 	case "CREATE_PRODUCT":
 		log.Println(" [.] Creating product")
+	
+		// Estructura para deserializar los datos recibidos
 		var data struct {
-			Name string `json:"name"`
+			Name        string  `json:"name"`
+			Price       int `json:"price"`
+			Description string  `json:"description"`
 		}
+	
 		var err error
 		var dataJson []byte
 		var product models.Product
+	
 		// Log de depuración para verificar los datos recibidos
-		log.Printf("Received data: %+v\n", data.Name)
-
+		log.Printf("Received data: %+v\n", Payload.Data)
+	
+		// Deserializar el payload JSON
 		err = json.Unmarshal(Payload.Data, &data)
 		if err != nil {
 			response = models.Response{
@@ -151,8 +203,9 @@ func Handler(d amqp.Delivery, ch *amqp.Channel) {
 			}
 			break
 		}
-
-		product, err = controllers.CreateProduct(data.Name)
+	
+		// Crear el producto utilizando los datos deserializados
+		product, err = controllers.CreateProduct(data.Name, data.Description, data.Price)
 		if err != nil {
 			response = models.Response{
 				Success: "error",
@@ -161,6 +214,8 @@ func Handler(d amqp.Delivery, ch *amqp.Channel) {
 			}
 			break
 		}
+	
+		// Serializar el producto creado a JSON
 		dataJson, err = json.Marshal(product)
 		if err != nil {
 			response = models.Response{
@@ -175,6 +230,7 @@ func Handler(d amqp.Delivery, ch *amqp.Channel) {
 				Data:    dataJson,
 			}
 		}
+	
 
 	case "DELETE_PRODUCT":
 		log.Println(" [.] Deleting product")
@@ -220,8 +276,7 @@ func Handler(d amqp.Delivery, ch *amqp.Channel) {
 				Data:    dataJson,
 			}
 		}
-
-	case "CREATE_CARTITEM":
+	/*case "CREATE_CARTITEM":
 		log.Println(" [.] Creating cartitem")
 		var data struct {
 			Username    string `json:"username"`

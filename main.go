@@ -3,14 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 
 	//"github.com/ValeHenriquez/example-rabbit-go/users-server/config"
 	//"github.com/ValeHenriquez/example-rabbit-go/users-server/internal"
-	"github.com/FelipeGeraldoblufus/Cart/config"
-	"github.com/FelipeGeraldoblufus/Cart/controllers"
-	"github.com/FelipeGeraldoblufus/Cart/internal"
-	"github.com/gorilla/mux"
+	"github.com/FelipeGeraldoblufus/Comandas-ms/config"
+	"github.com/FelipeGeraldoblufus/Comandas-ms/internal"
 	"github.com/joho/godotenv"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -30,9 +27,9 @@ func getChannel() *amqp.Channel {
 }
 
 func declareQueue(ch *amqp.Channel) amqp.Queue {
-	q, err := ch.QueueDeclarePassive(
-		"cart", // name
-		false,  // durable
+	q, err := ch.QueueDeclare(
+		"orders", // name
+		true,  // durable
 		false,  // delete when unused
 		false,  // exclusive
 		false,  // no-wait
@@ -92,29 +89,6 @@ func main() {
 			internal.Handler(d, ch) // Llama al manejador de mensajes internos con el mensaje y el canal de RabbitMQ
 		}
 	}()
-
-	r := mux.NewRouter()
-
-	r.HandleFunc("/api/product", controllers.CreateProductRest).Methods("POST")
-	r.HandleFunc("/api/product/{name}", controllers.GetProductRest).Methods("GET")
-	r.HandleFunc("/api/product/{name}", controllers.DeleteProductRest).Methods("DELETE")
-	r.HandleFunc("/api/product/{name}", controllers.UpdateProductRest).Methods("PUT")
-
-	r.HandleFunc("/api/cartitem", controllers.CreateCartItemRest).Methods("POST")
-	r.HandleFunc("/api/cartitem/{id}", controllers.GetCartItemRest).Methods("GET")
-	r.HandleFunc("/api/cartitem/{id}", controllers.DeleteCartItemRest).Methods("DELETE")
-	r.HandleFunc("/api/cartitem/{id}", controllers.UpdateCartItemRest).Methods("PUT")
-
-	r.HandleFunc("/api/user", controllers.CreateUserRest).Methods("POST")
-	r.HandleFunc("/api/user/{username}", controllers.GetUserRest).Methods("GET")
-	r.HandleFunc("/api/user/addcartitem", controllers.AddCartItemToUser).Methods("POST")
-	r.HandleFunc("/api/user/removecartitem", controllers.RemoveCartItemFromUser).Methods("DELETE")
-	r.HandleFunc("/api/user/edituser", controllers.EditUserREST).Methods("PUT")
-
-	r.HandleFunc("/api/order", controllers.CreateOrderREST).Methods("POST")
-	r.HandleFunc("/api/user/orders/{username}", controllers.GetOrdersByUsernameREST).Methods("GET")
-
-	http.ListenAndServe(":3000", r)
 
 	log.Printf(" [*] Awaiting RPC requests")
 	<-forever // Espera indefinidamente*/

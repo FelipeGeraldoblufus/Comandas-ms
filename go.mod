@@ -1,4 +1,4 @@
-module github.com/FelipeGeraldoblufus/product-microservice-go
+module github.com/FelipeGeraldoblufus/Comandas-ms
 
 go 1.21
 
