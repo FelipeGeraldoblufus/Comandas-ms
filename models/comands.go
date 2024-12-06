@@ -19,6 +19,7 @@ type OrderItem struct {
 	Product    Product `gorm:"foreignKey:ProductID" json:"product"` // Detalles del producto
 	Quantity   int     `gorm:"not null" json:"quantity"`      // Cantidad solicitada
 	TotalPrice int `gorm:"not null" json:"total_price"`   // Total del producto (Price * Quantity)
+	TableNumber  int        `gorm:"not null" json:"table_number"`      // Número de mesa
 }
 
 // Representa una comanda en el restaurante.
@@ -29,13 +30,6 @@ type Order struct {
 	Items        []OrderItem `gorm:"foreignKey:OrderID" json:"items"`         // Productos incluidos en la comanda
 	OrderDate    time.Time  `gorm:"not null" json:"order_date"`        // Fecha de creación del pedido
 	TotalAmount  int    `gorm:"not null" json:"total_amount"`      // Total de la comanda
+	Estado string `gorm:"not null" json:"estado"`
 }
 
-
-// Representa a los usuarios del sistema (por ejemplo, meseros).
-type User struct {
-	ID           uint        `gorm:"primaryKey" json:"id"`                     // Identificador único del usuario
-	Username     string      `gorm:"not null;unique" json:"username"`          // Nombre del usuario
-	PendingItems []OrderItem `gorm:"foreignKey:UserID" json:"pending_items"`   // Items que aún no están confirmados
-	Orders       []Order     `gorm:"constraint:OnDelete:CASCADE" json:"orders"` // Comandas asociadas (finalizadas)
-}

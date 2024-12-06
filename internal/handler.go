@@ -276,6 +276,275 @@ func Handler(d amqp.Delivery, ch *amqp.Channel) {
 				Data:    dataJson,
 			}
 		}
+
+	case "CREATE_ORDER_ITEM":
+		log.Println(" [.] Creating order item")
+		var data struct {
+			UserID     uint `json:"user_id"`
+			ProductID  uint `json:"product_id"`
+			Quantity   int  `json:"quantity"`
+			TableNumber int `json:"tablenumber"`
+		}
+		var err error
+		var dataJson []byte
+		var newItem *models.OrderItem
+	
+		// Decodificar el payload
+		err = json.Unmarshal(Payload.Data, &data)
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error decoding JSON",
+				Data:    []byte(err.Error()),
+			}
+			break
+		}
+	
+		// Llamar al controlador
+		newItem, err = controllers.AddOrderItem(data.UserID, data.ProductID, data.Quantity, data.TableNumber)
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error creating order item",
+				Data:    []byte(err.Error()),
+			}
+			break
+		}
+	
+		// Serializar la respuesta
+		dataJson, err = json.Marshal(newItem)
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error marshaling JSON",
+				Data:    []byte(err.Error()),
+			}
+		} else {
+			response = models.Response{
+				Success: "success",
+				Message: "Order item created",
+				Data:    dataJson,
+			}
+		}
+
+	case "GET_ALL_ORDER_ITEMS":
+		log.Println(" [.] Getting all order items")
+		var err error
+		var dataJson []byte
+		var items []models.OrderItem
+	
+		// Llamar al controlador
+		items, err = controllers.GetAllOrderItems()
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error fetching order items",
+				Data:    []byte(err.Error()),
+			}
+			break
+		}
+	
+		// Serializar la respuesta
+		dataJson, err = json.Marshal(items)
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error marshaling JSON",
+				Data:    []byte(err.Error()),
+			}
+		} else {
+			response = models.Response{
+				Success: "success",
+				Message: "Order items fetched",
+				Data:    dataJson,
+			}
+		}
+
+	case "GET_ORDER_ITEMSBYUSER":
+		log.Println(" [.] Getting OrderItem")
+		var data struct {
+			UserID uint `json:"user_id"`
+		}
+		var err error
+		var dataJson []byte
+		var items []models.OrderItem
+	
+		// Deserializar el payload recibido
+		err = json.Unmarshal(Payload.Data, &data)
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error decoding JSON",
+				Data:    []byte(err.Error()),
+			}
+			break
+		}
+	
+		// Llamar a la función del controlador para obtener los datos
+		items, err = controllers.GetOrderItemsByUserID(data.UserID)
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error retrieving OrderItems",
+				Data:    []byte(err.Error()),
+			}
+			break
+		}
+	
+		// Serializar los datos obtenidos
+		dataJson, err = json.Marshal(items)
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error marshaling JSON",
+				Data:    []byte(err.Error()),
+			}
+		} else {
+			response = models.Response{
+				Success: "success",
+				Message: "Order Items retrieved successfully",
+				Data:    dataJson,
+			}
+		}
+
+
+	case "GET_ALL_ORDERS":
+		log.Println(" [.] Getting all orders")
+		var err error
+		var dataJson []byte
+		var order []models.Order
+	
+		// Llamar al controlador
+		order, err = controllers.GetAllOrders()
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error fetching orders",
+				Data:    []byte(err.Error()),
+			}
+			break
+		}
+	
+		// Serializar la respuesta
+		dataJson, err = json.Marshal(order)
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error marshaling JSON",
+				Data:    []byte(err.Error()),
+			}
+		} else {
+			response = models.Response{
+				Success: "success",
+				Message: "Orders fetched",
+				Data:    dataJson,
+			}
+		}
+	
+	case "UPDATE_ORDER_STATUS_BY_TABLE": 
+		log.Println(" [.] Updating order status by table number")
+		
+		var data struct {
+			Order_id uint    `json:"order_id"` // Número de mesa
+			NewStatus   string `json:"new_status"`   // Nuevo estado de la orden
+		}
+		
+		var err error
+		var dataJson []byte
+		var updatedOrder *models.Order
+		
+		// Deserializar el payload recibido
+		err = json.Unmarshal(Payload.Data, &data)
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error decoding JSON",
+				Data:    []byte(err.Error()),
+			}
+			break
+		}
+	
+		// Llamar a la función del controlador para actualizar el estado de la orden
+		updatedOrder, err = controllers.UpdateOrderStatus(data.Order_id, data.NewStatus)
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error updating order status",
+				Data:    []byte(err.Error()),
+			}
+			break
+		}
+	
+		// Serializar los datos obtenidos (la orden actualizada)
+		dataJson, err = json.Marshal(updatedOrder)
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error marshaling JSON",
+				Data:    []byte(err.Error()),
+			}
+		} else {
+			response = models.Response{
+				Success: "success",
+				Message: "Order status updated successfully",
+				Data:    dataJson,
+			}
+		}
+		
+	case "DELETE_ORDER_ITEM":
+		log.Println(" [.] Deleting OrderItem")
+		var data struct {
+			OrderItemID uint `json:"order_item_id"` // ID del OrderItem a eliminar
+		}
+		var err error
+		var dataJson []byte
+		var orderItem *models.OrderItem
+	
+		// Log de depuración para verificar los datos recibidos
+		log.Printf("Received data: %+v\n", data.OrderItemID)
+	
+		// Deserializar el JSON recibido
+		err = json.Unmarshal(Payload.Data, &data)
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error decoding JSON",
+				Data:    []byte(err.Error()),
+			}
+			break
+		}
+	
+		// Eliminar el OrderItem usando el ID recibido
+		orderItem, err = controllers.DeleteOrderItem(data.OrderItemID) // Captura ambos valores
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error Deleting OrderItem",
+				Data:    []byte(err.Error()),
+			}
+			break
+		}
+	
+		// Si el OrderItem es eliminado correctamente, devolvemos la respuesta
+		dataJson, err = json.Marshal(orderItem) // Serializar el OrderItem eliminado
+		if err != nil {
+			response = models.Response{
+				Success: "error",
+				Message: "Error marshaling JSON",
+				Data:    []byte(err.Error()),
+			}
+		} else {
+			response = models.Response{
+				Success: "success",
+				Message: "OrderItem deleted",
+				Data:    dataJson, // OrderItem eliminado
+			}
+		}
+	
+	
+
+	
+
 	/*case "CREATE_CARTITEM":
 		log.Println(" [.] Creating cartitem")
 		var data struct {
